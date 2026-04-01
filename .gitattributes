@@ -1,0 +1,2 @@
+data/activities.zip filter=lfs diff=lfs merge=lfs -text
+data/strava_runs_clean.csv filter=lfs diff=lfs merge=lfs -text
