@@ -60,7 +60,8 @@ def assemble_timeseries(
         daily = daily.reindex(full_range, fill_value=0.0)
         loads = compute_training_loads(daily, atl_days=atl_days, ctl_days=ctl_days)
 
-        # Merge ATL/CTL/TSB back onto per-run df
+        # Drop pre-existing load columns to avoid join conflict, then re-attach
+        df.drop(columns=[c for c in ("atl", "ctl", "tsb") if c in df.columns], inplace=True)
         df["run_date_dt"] = pd.to_datetime(df["run_date"]).dt.normalize()
         loads.index = pd.to_datetime(loads.index).normalize()
         df = df.join(loads, on="run_date_dt", how="left")

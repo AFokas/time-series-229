@@ -137,7 +137,7 @@ def estimate_lt(df: pd.DataFrame) -> Optional[dict]:
     # Fit 3rd-order polynomial: HR = f(speed)
     try:
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore", np.RankWarning)
+            warnings.simplefilter("ignore", np.exceptions.RankWarning if hasattr(np, "exceptions") else UserWarning)
             coeffs = np.polyfit(speed_s, hr_s, 3)
     except (np.linalg.LinAlgError, ValueError):
         return None

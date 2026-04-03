@@ -35,7 +35,7 @@ from src.analysis.metrics import (
     pace_variability_index,
     trimp,
 )
-from src.pipeline.02_detect import detect_intervals
+from src.pipeline._02_detect import detect_intervals
 from src.utils.zones import ZoneBoundaries
 
 

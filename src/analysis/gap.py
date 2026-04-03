@@ -75,7 +75,7 @@ def add_gap_columns(df: pd.DataFrame) -> pd.DataFrame:
     Expects smoothed `altitude` and `distance_m` columns, and smoothed `speed` (m/s).
     Operates in-place and returns the DataFrame.
     """
-    df["gradient"] = compute_gradient(df["altitude"], df["distance_m"])
+    df["gradient"] = compute_gradient(df["altitude_m"], df["distance_m"])
     df["gap_speed_ms"] = minetti_gap(df["speed"], df["gradient"])
     df["gap_pace_min_per_km"] = speed_to_pace_series(df["gap_speed_ms"])
     return df

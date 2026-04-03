@@ -39,11 +39,16 @@ def stationarity_check(series: pd.Series, alpha: float = 0.05) -> dict:
     kpss_stat, kpss_pvalue, kpss_stationary, is_stationary.
     """
     clean = series.dropna()
+    _nan_result = {
+        "adf_stat": np.nan, "adf_pvalue": np.nan, "adf_stationary": False,
+        "kpss_stat": np.nan, "kpss_pvalue": np.nan, "kpss_stationary": False,
+        "is_stationary": False,
+    }
     if len(clean) < 10:
-        return {k: np.nan for k in [
-            "adf_stat", "adf_pvalue", "adf_stationary",
-            "kpss_stat", "kpss_pvalue", "kpss_stationary", "is_stationary"
-        ]}
+        return _nan_result
+    if clean.std() == 0:
+        # Constant series: cannot apply unit root tests; treat as non-stationary
+        return _nan_result
 
     adf_result = adfuller(clean, autolag="AIC")
     adf_stat, adf_p = float(adf_result[0]), float(adf_result[1])

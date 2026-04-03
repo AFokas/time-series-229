@@ -138,6 +138,9 @@ def detect_intervals(
         if gap >= min_segment_gap_s and (iv["interval_start_s"] - filtered[-1]["interval_end_s"]) >= min_recovery_s:
             filtered.append(iv)
     intervals = filtered
+    # Re-index after filtering
+    for idx, iv in enumerate(intervals, start=1):
+        iv["interval_idx"] = idx
 
     if len(intervals) < min_intervals:
         return False, []
@@ -208,7 +211,7 @@ def classify_runs(
 
         # Get current LT estimate for this date
         lt_est = tracker.get_lt_for_date(run_date if pd.notna(run_date) else pd.Timestamp.now(tz="UTC"))
-        zones = ZoneBoundaries.from_lt(lt_est.lt_hr, lt_est.lt_pace)
+        zones = ZoneBoundaries.from_lt(lt_est.lt_hr, lt_est.lt_pace_min_per_km)
 
         # Attempt LT estimation from this run
         lt_result = estimate_lt(df)
@@ -248,7 +251,7 @@ def classify_runs(
             "total_interval_time_s": total_interval_time_s,
             "avg_interval_pace": avg_interval_pace,
             "estimated_lt_hr": lt_est.lt_hr,
-            "estimated_lt_pace": lt_est.lt_pace,
+            "estimated_lt_pace": lt_est.lt_pace_min_per_km,
         })
 
         print(f"  {activity_id}: {run_type} ({distance_km:.1f} km)")

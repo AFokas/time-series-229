@@ -4,16 +4,27 @@ from __future__ import annotations
 
 import gzip
 import io
+import sys
 from pathlib import Path
 from typing import Optional
 
 import numpy as np
 import pandas as pd
 
+# Try system fitparse first, then fall back to vendored copy
 try:
     import fitparse
-except ImportError as e:
-    raise ImportError("fitparse is required: pip install fitparse") from e
+except ImportError:
+    _vendor = Path(__file__).resolve().parents[2] / "vendor"
+    if _vendor.exists() and str(_vendor) not in sys.path:
+        sys.path.insert(0, str(_vendor))
+    try:
+        import fitparse
+    except ImportError as e:
+        raise ImportError(
+            "fitparse is required. Install via 'pip install fitparse' or ensure "
+            "vendor/fitparse exists in the repository root."
+        ) from e
 
 # Semicircles to degrees conversion factor (Garmin FIT format)
 SEMICIRCLES_TO_DEGREES = 180.0 / 2**31
