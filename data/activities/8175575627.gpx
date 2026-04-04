@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx creator="StravaGPX" version="1.1" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+ <metadata>
+  <time>2022-11-27T12:45:54Z</time>
+ </metadata>
+ <trk>
+  <name>Lunch Run</name>
+  <type>running</type>
+  <trkseg>
+   <trkpt lat="51.5623190" lon="-0.0746960">
+    <ele>26.4</ele>
+    <time>2022-11-27T12:45:54Z</time>
+   </trkpt>
+   <trkpt lat="51.5623370" lon="-0.0746910">
+    <ele>26.3</ele>
+    <time>2022-11-27T12:45:55Z</time>
+   </trkpt>
+   <trkpt lat="51.5623310" lon="-0.0746810">
+    <ele>26.3</ele>
+    <time>2022-11-27T12:45:56Z</time>
+   </trkpt>
+   <trkpt lat="51.5623390" lon="-0.0746530">
+    <ele>26.3</ele>
+    <time>2022-11-27T12:45:57Z</time>
+   </trkpt>
+   <trkpt lat="51.5623540" lon="-0.0746110">
+    <ele>26.3</ele>
+    <time>2022-11-27T12:45:58Z</time>
+   </trkpt>
+   <trkpt lat="51.5623600" lon="-0.0746030">
+    <ele>26.3</ele>
+    <time>2022-11-27T12:45:59Z</time>
+   </trkpt>
+   <trkpt lat="51.5623570" lon="-0.0745860">
+    <ele>26.2</ele>
+    <time>2022-11-27T12:46:00Z</time>
+   </trkpt>
+   <trkpt lat="51.5623550" lon="-0.0745530">
+    <ele>26.2</ele>
+    <time>2022-11-27T12:46:01Z</time>
+   </trkpt>
+   <trkpt lat="51.5623410" lon="-0.0745370">
+    <ele>26.2</ele>
+    <time>2022-11-27T12:46:02Z</time>
+   </trkpt>
+   <trkpt lat="51.5623440" lon="-0.0745120">
+    <ele>26.2</ele>
+    <time>2022-11-27T12:46:03Z</time>
+   </trkpt>
+   <trkpt lat="51.5623490" lon="-0.0744920">
+    <ele>26.1</ele>
+    <time>2022-11-27T12:46:04Z</time>
+   </trkpt>
+   <trkpt lat="51.5623470" lon="-0.0744630">
+    <ele>26.1</ele>
+    <time>2022-11-27T12:46:05Z</time>
+   </trkpt>
+   <trkpt lat="51.5623540" lon="-0.0744500">
+    <ele>26.1</ele>
+    <time>2022-11-27T12:46:06Z</time>
+   </trkpt>
+   <trkpt lat="51.5623470" lon="-0.0744180">
+    <ele>26.1</ele>
+    <time>2022-11-27T12:46:07Z</time>
+   </trkpt>
+   <trkpt lat="51.5623460" lon="-0.0743910">
+    <ele>26.1</ele>
+    <time>2022-11-27T12:46:08Z</time>
+   </trkpt>
+   <trkpt lat="51.5623410" lon="-0.0743660">
+    <ele>26.0</ele>
+    <time>2022-11-27T12:46:09Z</time>
+   </trkpt>
+   <trkpt lat="51.5623260" lon="-0.0743330">
+    <ele>26.0</ele>
+    <time>2022-11-27T12:46:10Z</time>
+   </trkpt>
+   <trkpt lat="51.5623180" lon="-0.0743200">
+    <ele>26.0</ele>
+    <time>2022-11-27T12:46:11Z</time>
+   </trkpt>
+   <trkpt lat="51.5623170" lon="-0.0743060">
+    <ele>26.0</ele>
+    <time>2022-11-27T12:46:12Z</time>
+   </trkpt>
+   <trkpt lat="51.5623110" lon="-0.0742760">
+    <ele>26.0</ele>
+    <time>2022-11-27T12:46:13Z</time>
+   </trkpt>
+   <trkpt lat="51.5623090" lon="-0.0742540">
+    <ele>26.0</ele>
+    <time>2022-11-27T12:46:14Z</time>
+   </trkpt>
+   <trkpt lat="51.5623140" lon="-0.0742460">
+    <ele>26.0</ele>
+    <time>2022-11-27T12:46:15Z</time>
+   </trkpt>
+   <trkpt lat="51.5623220" lon="-0.0742440">
+    <ele>26.0</ele>
+    <time>2022-11-27T12:46:16Z</time>
+   </trkpt>
+   <trkpt lat="51.5623260" lon="-0.0742260">
+    <ele>26.0</ele>
+    <time>2022-11-27T12:46:17Z</time>
+   </trkpt>
+   <trkpt lat="51.5623290" lon="-0.0742070">
+    <ele>26.0</ele>
+    <time>2022-11-27T12:46:18Z</time>
+   </trkpt>
+  </trkseg>
+ </trk>
+</gpx>
