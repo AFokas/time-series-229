@@ -58,6 +58,8 @@ def compute_gradient(altitude: pd.Series, distance_m: pd.Series) -> pd.Series:
     gradient = delta_altitude / delta_distance, clipped to ±0.45.
     The first row is set to 0 (no previous point).
     """
+    altitude = pd.to_numeric(altitude, errors="coerce")
+    distance_m = pd.to_numeric(distance_m, errors="coerce")
     delta_alt = altitude.diff().fillna(0.0)
     delta_dist = distance_m.diff().fillna(0.0)
 

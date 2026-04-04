@@ -97,6 +97,52 @@ def parse_fit_file(filepath: Path | str) -> pd.DataFrame:
     return df
 
 
+def get_first_timestamp(filepath: Path | str) -> pd.Timestamp | None:
+    """Return only the first record timestamp from a .fit/.fit.gz file.
+
+    Reads only the minimum bytes necessary (first ~8KB of decompressed data),
+    which is much faster than parse_fit_file() when you only need the date.
+    Returns None if no timestamp can be found.
+    """
+    filepath = Path(filepath)
+    try:
+        # Read just the first 8 KB of decompressed content — enough to find
+        # the first record message which appears near the start of every FIT file.
+        if filepath.suffix == ".gz":
+            with gzip.open(filepath, "rb") as f:
+                raw = io.BytesIO(f.read(8192))
+        else:
+            with open(filepath, "rb") as f:
+                raw = io.BytesIO(f.read(8192))
+
+        try:
+            fit = fitparse.FitFile(raw)
+            for record in fit.get_messages("record"):
+                data = {d.name: d.value for d in record}
+                ts = data.get("timestamp")
+                if ts is not None:
+                    return pd.Timestamp(ts, tz="UTC")
+        except Exception:
+            pass
+
+        # Fallback: read the full file if the partial read didn't work
+        if filepath.suffix == ".gz":
+            with gzip.open(filepath, "rb") as f:
+                raw = io.BytesIO(f.read())
+        else:
+            with open(filepath, "rb") as f:
+                raw = io.BytesIO(f.read())
+        fit = fitparse.FitFile(raw)
+        for record in fit.get_messages("record"):
+            data = {d.name: d.value for d in record}
+            ts = data.get("timestamp")
+            if ts is not None:
+                return pd.Timestamp(ts, tz="UTC")
+    except Exception:
+        pass
+    return None
+
+
 def compute_elapsed_seconds(df: pd.DataFrame) -> pd.Series:
     """Return elapsed seconds from the first timestamp."""
     if df["timestamp"].isna().all():

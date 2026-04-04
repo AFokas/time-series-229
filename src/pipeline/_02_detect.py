@@ -179,20 +179,12 @@ def detect_intervals(
 
 def classify_runs(
     runs_dir: Path,
-    csv_path: Path,
     output_path: Path,
     lt_tracker_path: Optional[Path] = None,
     interval_min_duration: int = 60,
     long_run_min_km: float = 25.0,
     long_run_max_km: float = 38.0,
 ) -> pd.DataFrame:
-    runs_meta = pd.read_csv(csv_path)
-    runs_meta.columns = [c.strip() for c in runs_meta.columns]
-
-    date_col = next((c for c in runs_meta.columns if "date" in c.lower()), None)
-    if date_col:
-        runs_meta["_date"] = pd.to_datetime(runs_meta[date_col], utc=True)
-
     tracker = LTTracker()
     manifest_rows = []
 
@@ -271,7 +263,6 @@ def classify_runs(
 def main():
     parser = argparse.ArgumentParser(description="Step 2: Run classification")
     parser.add_argument("--runs-dir", type=Path, default=Path("outputs/runs/raw"))
-    parser.add_argument("--csv-path", type=Path, default=Path("data/strava_runs_clean.csv"))
     parser.add_argument("--output", type=Path, default=Path("outputs/run_manifest.csv"))
     parser.add_argument("--lt-tracker-path", type=Path, default=Path("outputs/lt_tracker.csv"))
     parser.add_argument("--interval-min-duration", type=int, default=60)
@@ -281,7 +272,6 @@ def main():
 
     classify_runs(
         runs_dir=args.runs_dir,
-        csv_path=args.csv_path,
         output_path=args.output,
         lt_tracker_path=args.lt_tracker_path,
         interval_min_duration=args.interval_min_duration,

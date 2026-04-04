@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import io
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -35,14 +33,23 @@ from tests.fixtures.fit_generator import (
 # Markers
 # ---------------------------------------------------------------------------
 def pytest_configure(config):
-    config.addinivalue_line("markers", "real_data: requires data/activities.zip to be present")
+    config.addinivalue_line(
+        "markers",
+        "real_data: requires data/activities/ directory with *.fit.gz files",
+    )
+
+
+def _real_data_present() -> bool:
+    activities_dir = REPO_ROOT / "data" / "activities"
+    return activities_dir.is_dir() and bool(list(activities_dir.glob("*.fit.gz")))
 
 
 def pytest_collection_modifyitems(config, items):
-    real_data_present = (REPO_ROOT / "data" / "activities.zip").exists()
-    skip_real = pytest.mark.skip(reason="data/activities.zip not present; add real data to run")
+    skip_real = pytest.mark.skip(
+        reason="data/activities/ not present; add real data to run"
+    )
     for item in items:
-        if "real_data" in item.keywords and not real_data_present:
+        if "real_data" in item.keywords and not _real_data_present():
             item.add_marker(skip_real)
 
 
@@ -117,10 +124,11 @@ def real_data_dir():
 
 
 @pytest.fixture
-def real_activities_zip():
-    return REPO_ROOT / "data" / "activities.zip"
+def real_activities_dir():
+    return REPO_ROOT / "data" / "activities"
 
 
 @pytest.fixture
 def real_strava_csv():
+    """May be an LFS pointer if not downloaded; tests should handle gracefully."""
     return REPO_ROOT / "data" / "strava_runs_clean.csv"

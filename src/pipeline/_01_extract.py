@@ -1,11 +1,11 @@
 """Step 1: FIT extraction pipeline.
 
-For each qualifying run in strava_runs_clean.csv (Activity Type == Run,
-date within training block), parse the .fit.gz file, apply smoothing,
-compute GAP, and save a Parquet file to outputs/runs/raw/{activity_id}.parquet.
+Scans data/activities/ for *.fit.gz files, reads the first timestamp to
+determine the run date, filters to the training block, smooths signals,
+computes GAP, and saves a Parquet per run to outputs/runs/raw/.
 
 Usage:
-    python -m src.pipeline.01_extract \
+    python -m src.pipeline._01_extract \
         --data-dir data/ \
         --output-dir outputs/runs/raw/ \
         [--smoothing-window 10] \
@@ -16,21 +16,14 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 import multiprocessing
-import tempfile
-import zipfile
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from src.analysis.gap import add_gap_columns
-from src.utils.fit_reader import (
-    compute_elapsed_seconds,
-    get_activity_id_from_filename,
-    parse_fit_file,
-)
+from src.utils.fit_reader import compute_elapsed_seconds, get_first_timestamp, parse_fit_file
 
 TRAINING_BLOCK_START = pd.Timestamp("2025-06-01", tz="UTC")
 TRAINING_BLOCK_END = pd.Timestamp("2025-12-21", tz="UTC")
@@ -43,8 +36,17 @@ OUTPUT_COLUMNS = [
 ]
 
 
+def _activity_id_from_path(path: Path) -> str | None:
+    """Return the numeric activity ID from a filename like 15643184146.fit.gz."""
+    name = path.name
+    for suffix in (".fit.gz", ".fit"):
+        if name.endswith(suffix):
+            stem = name[: -len(suffix)]
+            return stem if stem.isdigit() else stem  # keep non-numeric too
+    return None
+
+
 def _checksum(filepath: Path) -> str:
-    """MD5 checksum of a file for cache invalidation."""
     h = hashlib.md5()
     with open(filepath, "rb") as f:
         for chunk in iter(lambda: f.read(65536), b""):
@@ -53,7 +55,6 @@ def _checksum(filepath: Path) -> str:
 
 
 def _smooth(df: pd.DataFrame, window: int = 10) -> pd.DataFrame:
-    """Apply rolling mean to continuous signals; store raw originals."""
     smooth_cols = {
         "speed": "speed_raw",
         "heart_rate": "hr_raw",
@@ -83,34 +84,26 @@ def process_one_run(
     """Extract, smooth, and save one run. Returns activity_id on success."""
     out_path = output_dir / f"{activity_id}.parquet"
 
-    # Check cache: if output exists and checksum matches, skip
     if cache_dir is not None:
         cache_file = cache_dir / f"{activity_id}.md5"
         current_md5 = _checksum(fit_path)
         if out_path.exists() and cache_file.exists():
             if cache_file.read_text().strip() == current_md5:
-                return activity_id  # already processed
+                return activity_id
 
-    # Parse FIT
     df = parse_fit_file(fit_path)
     if df.empty:
         return f"EMPTY:{activity_id}"
 
-    # Elapsed seconds
     df["elapsed_s"] = compute_elapsed_seconds(df)
 
-    # Rename distance column
     if "distance" in df.columns:
         df.rename(columns={"distance": "distance_m"}, inplace=True)
-
-    # Rename altitude
     if "altitude" in df.columns:
         df.rename(columns={"altitude": "altitude_m"}, inplace=True)
 
-    # Smooth
     df = _smooth(df, window=smoothing_window)
 
-    # GAP
     if "altitude_m" in df.columns and "distance_m" in df.columns and "speed" in df.columns:
         add_gap_columns(df)
     else:
@@ -118,18 +111,15 @@ def process_one_run(
         df["gap_speed_ms"] = np.nan
         df["gap_pace_min_per_km"] = np.nan
 
-    # Metadata columns
     df["run_id"] = run_id
     df["activity_id"] = activity_id
     df["run_date"] = run_date.date()
 
-    # Boundary flag
     df["is_run_boundary"] = False
     if len(df) > 0:
         df.iloc[0, df.columns.get_loc("is_run_boundary")] = True
         df.iloc[-1, df.columns.get_loc("is_run_boundary")] = True
 
-    # Keep only specified columns (fill missing with NaN)
     for col in OUTPUT_COLUMNS:
         if col not in df.columns:
             df[col] = np.nan
@@ -154,93 +144,73 @@ def run_extraction(
     output_dir: Path,
     smoothing_window: int = 10,
     workers: int = 1,
+    max_runs: int | None = None,
 ) -> pd.DataFrame:
     """Main extraction function.
 
-    Returns a DataFrame summarising processed runs.
+    Scans data_dir/activities/ for *.fit.gz files, filters to the training
+    block by reading each file's first timestamp, then processes each run.
+
+    Args:
+        max_runs: If set, stop after processing this many runs (useful in tests).
+
+    Returns a summary DataFrame of processed runs.
     """
-    csv_path = data_dir / "strava_runs_clean.csv"
-    zip_path = data_dir / "activities.zip"
+    activities_dir = data_dir / "activities"
     cache_dir = output_dir / ".cache"
 
-    if not csv_path.exists():
-        raise FileNotFoundError(f"CSV not found: {csv_path}")
-    if not zip_path.exists():
-        raise FileNotFoundError(f"activities.zip not found: {zip_path}")
+    if not activities_dir.exists():
+        raise FileNotFoundError(f"activities directory not found: {activities_dir}")
 
-    runs_df = pd.read_csv(csv_path)
+    fit_files = sorted(activities_dir.glob("*.fit.gz"))
+    if not fit_files:
+        raise FileNotFoundError(f"No *.fit.gz files found in {activities_dir}")
 
-    # Normalise column names
-    runs_df.columns = [c.strip() for c in runs_df.columns]
+    print(f"Found {len(fit_files)} .fit.gz files; scanning timestamps...")
 
-    # Filter to runs only
-    if "Activity Type" in runs_df.columns:
-        runs_df = runs_df[runs_df["Activity Type"].str.strip().str.lower() == "run"].copy()
+    # First pass: read only the first timestamp from each file (fast path)
+    in_block: list[tuple[str, Path, pd.Timestamp]] = []
+    for fit_path in fit_files:
+        activity_id = _activity_id_from_path(fit_path)
+        if activity_id is None:
+            continue
+        ts = get_first_timestamp(fit_path)
+        if ts is None:
+            continue
+        if TRAINING_BLOCK_START <= ts <= TRAINING_BLOCK_END:
+            in_block.append((activity_id, fit_path, ts))
 
-    # Parse date
-    date_col = next((c for c in runs_df.columns if "date" in c.lower()), None)
-    if date_col is None:
-        raise ValueError("No date column found in strava_runs_clean.csv")
-    runs_df["_date"] = pd.to_datetime(runs_df[date_col], utc=True)
-
-    # Filter to training block
-    mask = (runs_df["_date"] >= TRAINING_BLOCK_START) & (runs_df["_date"] <= TRAINING_BLOCK_END)
-    runs_df = runs_df[mask].sort_values("_date").reset_index(drop=True)
-
-    if runs_df.empty:
+    if not in_block:
         print("No qualifying runs found in training block.")
         return pd.DataFrame()
 
-    print(f"Found {len(runs_df)} qualifying runs.")
+    in_block.sort(key=lambda x: x[2])
+    if max_runs is not None:
+        in_block = in_block[:max_runs]
+    print(f"Found {len(in_block)} runs in training block.")
 
-    # Extract zip to temp dir
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp = Path(tmpdir)
-        print(f"Extracting activities.zip → {tmp}")
-        with zipfile.ZipFile(zip_path, "r") as zf:
-            zf.extractall(tmp)
+    tasks = [
+        (activity_id, fit_path, run_date, run_id, output_dir, smoothing_window, cache_dir)
+        for run_id, (activity_id, fit_path, run_date) in enumerate(in_block, start=1)
+    ]
 
-        # Build task list
-        tasks = []
-        for run_id, (_, row) in enumerate(runs_df.iterrows(), start=1):
-            filename = str(row.get("Filename", ""))
-            activity_id = get_activity_id_from_filename(filename)
-            if activity_id is None:
-                print(f"  Skipping row {run_id}: cannot parse activity_id from '{filename}'")
-                continue
-            fit_path = tmp / filename
-            if not fit_path.exists():
-                # Try just the basename
-                fit_path = tmp / Path(filename).name
-            if not fit_path.exists():
-                print(f"  Skipping {activity_id}: file not found in zip ({filename})")
-                continue
-
-            tasks.append((
-                activity_id,
-                fit_path,
-                row["_date"],
-                run_id,
-                output_dir,
-                smoothing_window,
-                cache_dir,
-            ))
-
-        # Process
-        results = []
-        if workers > 1:
-            with multiprocessing.Pool(processes=workers) as pool:
-                results = pool.map(_worker, tasks)
-        else:
-            for task in tasks:
-                res = _worker(task)
-                results.append(res)
-                status = "SKIP" if res == task[0] else res
-                print(f"  {status}")
+    results = []
+    if workers > 1:
+        with multiprocessing.Pool(processes=workers) as pool:
+            results = pool.map(_worker, tasks)
+    else:
+        for task in tasks:
+            res = _worker(task)
+            results.append(res)
 
     ok = [r for r in results if not r.startswith("EMPTY:")]
-    print(f"\nExtracted {len(ok)} / {len(tasks)} runs.")
-    return runs_df
+    print(f"Extracted {len(ok)} / {len(tasks)} runs.")
+
+    summary = pd.DataFrame([
+        {"activity_id": aid, "run_date": ts.date()}
+        for aid, _, ts in in_block
+    ])
+    return summary
 
 
 def main():
